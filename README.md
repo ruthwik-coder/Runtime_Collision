@@ -1,6 +1,6 @@
 
 
-```markdown
+
 # 🚨 Vision-Based Automatic Highway Accident Detection System
 
 > **India Computer Vision Hackathon 2026**  
