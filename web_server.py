@@ -4,13 +4,13 @@ web_server.py
 Flask Web Application & API Server for Highway Accident Detection Dashboard.
 
 Features:
+- Bounding Boxes drawn on ALL 3-Stage Evidence Snapshots (Before, During, After)
 - Supervision ByteTrack Vehicle Trajectory Path Tracking (glowing motion paths)
 - Primary: Sudden Deceleration Stagnation (<8px movement over 10 frames)
 - Secondary: Supervision Trajectory Line Intersections
 - Temporal Persistence Gating (>=12 frames to eliminate passing car false alarms)
-- Memory Optimized with torch.no_grad() to prevent CPU RAM allocation limits
+- Memory Optimized with torch.no_grad()
 - Image (.jpg, .png) & Video (.mp4, .mov) Upload & Classification Support
-- 3-Stage Evidence Snapshots: Before Impact, During Collision, and Post Impact
 - 10 AI Output Deliverables for Web Command Dashboard
 """
 
@@ -266,7 +266,7 @@ def process_video():
     is_image_file = file_path.lower().endswith(('.jpg', '.jpeg', '.png', '.webp'))
     
     # -------------------------------------------------------------
-    # CASE A: PHOTO CLASSIFICATION
+    # CASE A: PHOTO CLASSIFICATION WITH ANNOTATED BOUNDING BOXES
     # -------------------------------------------------------------
     if is_image_file:
         frame = cv2.imread(file_path)
@@ -314,12 +314,12 @@ def process_video():
             x1, y1, x2, y2 = v['box']
             label, tid = v['cls'], v['id']
             if is_accident_frame and (tid in colliding_ids or len(colliding_ids) == 0):
-                color = (0, 0, 255)
+                color = (0, 0, 255) # RED Bounding Box
                 box_text = f"COLLISION V-{tid}: {label}"
                 thickness = 3
                 collided_classes.add(label)
             else:
-                color = (0, 255, 0)
+                color = (0, 255, 0) # GREEN Bounding Box
                 box_text = f"V-{tid}: {label}"
                 thickness = 2
 
@@ -338,10 +338,11 @@ def process_video():
         snap_b = os.path.join(app.config["OUTPUT_FOLDER"], f"snap_before_{run_id}.jpg")
         snap_d = os.path.join(app.config["OUTPUT_FOLDER"], f"snap_during_{run_id}.jpg")
         snap_a = os.path.join(app.config["OUTPUT_FOLDER"], f"snap_after_{run_id}.jpg")
+
         cv2.imwrite(out_img_path, annotated_frame)
-        cv2.imwrite(snap_b, frame)
-        cv2.imwrite(snap_d, annotated_frame)
-        cv2.imwrite(snap_a, annotated_frame)
+        cv2.imwrite(snap_b, annotated_frame) # Annotated with Bounding Boxes
+        cv2.imwrite(snap_d, annotated_frame) # Annotated with Bounding Boxes
+        cv2.imwrite(snap_a, annotated_frame) # Annotated with Bounding Boxes
 
         v_list = list(collided_classes) if collided_classes else ["Car", "Truck"]
         severity = assess_severity(v_list) if is_accident_frame else "Normal (No Emergency)"
@@ -367,7 +368,7 @@ def process_video():
         })
 
     # -------------------------------------------------------------
-    # CASE B: VIDEO TRAJECTORY DUAL-ENGINE INFERENCE
+    # CASE B: VIDEO TRAJECTORY INFERENCE (WITH BOUNDING BOX SNAPSHOTS)
     # -------------------------------------------------------------
     raw_out_path = os.path.join(app.config["OUTPUT_FOLDER"], f"raw_{run_id}.mp4")
     web_out_path = os.path.join(app.config["OUTPUT_FOLDER"], f"out_{run_id}.mp4")
@@ -388,7 +389,7 @@ def process_video():
     max_colliding_count = 0
     collided_classes_set = set()
     
-    raw_frames_history = []
+    annotated_frames_history = []  # Stores annotated frames containing Bounding Boxes
     peak_frame_idx = 0
     frame_idx = 0
     
@@ -397,7 +398,6 @@ def process_video():
             ret, frame = cap.read()
             if not ret: break
             frame_idx += 1
-            raw_frames_history.append(frame.copy())
             
             is_acc_frame = False
             pa_conf = 0.0
@@ -448,12 +448,12 @@ def process_video():
                 label, tid = v['cls'], v['id']
 
                 if tid in colliding_ids:
-                    color = (0, 0, 255)
+                    color = (0, 0, 255) # RED Bounding Box
                     box_text = f"COLLISION V-{tid}: {label}"
                     thickness = 3
                     collided_classes_set.add(label)
                 else:
-                    color = (0, 255, 0)
+                    color = (0, 255, 0) # GREEN Bounding Box
                     box_text = f"V-{tid}: {label}"
                     thickness = 2
 
@@ -474,6 +474,7 @@ def process_video():
             cv2.putText(frame, banner_text, (20, 36), font, 0.75, (255, 255, 255), 2, cv2.LINE_AA)
 
             out_writer.write(frame)
+            annotated_frames_history.append(frame.copy())  # Store annotated frame with bounding boxes
         
     cap.release()
     out_writer.release()
@@ -481,15 +482,16 @@ def process_video():
     transcode_to_h264(raw_out_path, web_out_path)
     if os.path.exists(raw_out_path): os.remove(raw_out_path)
 
-    total_f = len(raw_frames_history)
+    # Extract 3-Stage Snapshots WITH BOUNDING BOXES: Before, During, After
+    total_f = len(annotated_frames_history)
     if total_f > 0:
         idx_during = peak_frame_idx if accident_detected else total_f // 2
         idx_before = max(0, idx_during - int(fps * 1.5))
         idx_after = min(total_f - 1, idx_during + int(fps * 1.5))
         
-        cv2.imwrite(os.path.join(app.config["OUTPUT_FOLDER"], f"snap_before_{run_id}.jpg"), raw_frames_history[idx_before])
-        cv2.imwrite(os.path.join(app.config["OUTPUT_FOLDER"], f"snap_during_{run_id}.jpg"), raw_frames_history[idx_during])
-        cv2.imwrite(os.path.join(app.config["OUTPUT_FOLDER"], f"snap_after_{run_id}.jpg"), raw_frames_history[idx_after])
+        cv2.imwrite(os.path.join(app.config["OUTPUT_FOLDER"], f"snap_before_{run_id}.jpg"), annotated_frames_history[idx_before])
+        cv2.imwrite(os.path.join(app.config["OUTPUT_FOLDER"], f"snap_during_{run_id}.jpg"), annotated_frames_history[idx_during])
+        cv2.imwrite(os.path.join(app.config["OUTPUT_FOLDER"], f"snap_after_{run_id}.jpg"), annotated_frames_history[idx_after])
         
         snapshot_urls = {
             "before": f"/static/outputs/snap_before_{run_id}.jpg",
