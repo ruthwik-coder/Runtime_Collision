@@ -1,0 +1,32 @@
+# Heavy Neural Network Weight Files
+*.pt
+*.h5
+model_weights.h5
+yolo11s.pt
+accident_best.pt
+
+# Heavy Output Folders & Temporary Uploads
+Inferred_Outputs/
+static/outputs/
+static/uploads/
+__pycache__/
+*.zip
+*.avi
+
+# Ignore extra large video files except sample collision & normal feeds
+s2.mp4
+s3.mp4
+s4.mp4
+s5.mp4
+s6.mp4
+s7.mp4
+s8.mp4
+n2.avi
+n3.avi
+n4.avi
+n5.avi
+n6.avi
+output_*.mp4
+
+# Test Dataset Heavy Media
+Test_Dataset/

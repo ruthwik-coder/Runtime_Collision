@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>V7 Command Center</title>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts: Inter & JetBrains Mono -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind Config Injection -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#8ed5ff",
+                        "on-secondary-fixed-variant": "#39485a",
+                        "surface-container-highest": "#303539",
+                        "on-tertiary-fixed": "#2a1700",
+                        "on-primary-container": "#004965",
+                        "surface-tint": "#7bd0ff",
+                        "on-error": "#690005",
+                        "on-surface": "#dee3e8",
+                        "error": "#ffb4ab",
+                        "on-primary-fixed-variant": "#004c69",
+                        "on-tertiary": "#472a00",
+                        "on-error-container": "#ffdad6",
+                        "inverse-on-surface": "#2c3135",
+                        "on-surface-variant": "#bdc8d1",
+                        "outline": "#87929a",
+                        "primary-fixed-dim": "#7bd0ff",
+                        "surface-bright": "#343a3e",
+                        "on-background": "#dee3e8",
+                        "secondary-fixed-dim": "#b9c8de",
+                        "primary-container": "#38bdf8",
+                        "on-primary": "#00354a",
+                        "primary-fixed": "#c4e7ff",
+                        "inverse-primary": "#00668a",
+                        "on-secondary": "#233143",
+                        "secondary": "#b9c8de",
+                        "secondary-container": "#39485a",
+                        "tertiary": "#ffc176",
+                        "secondary-fixed": "#d4e4fa",
+                        "surface-variant": "#303539",
+                        "on-primary-fixed": "#001e2c",
+                        "inverse-surface": "#dee3e8",
+                        "on-secondary-fixed": "#0d1c2d",
+                        "outline-variant": "#3e484f",
+                        "tertiary-fixed-dim": "#ffb960",
+                        "on-secondary-container": "#a7b6cc",
+                        "background": "#0f1418",
+                        "tertiary-fixed": "#ffddb8",
+                        "surface-container": "#1b2024",
+                        "surface-container-high": "#252b2e",
+                        "surface-container-lowest": "#0a0f12",
+                        "on-tertiary-fixed-variant": "#653e00",
+                        "on-tertiary-container": "#613b00",
+                        "surface": "#0f1418",
+                        "error-container": "#93000a",
+                        "surface-container-low": "#171c20",
+                        "tertiary-container": "#f1a02b",
+                        "surface-dim": "#0f1418"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "sidebar-width": "280px",
+                        "element-gap": "8px",
+                        "section-margin": "24px",
+                        "grid-unit": "4px",
+                        "container-padding": "16px"
+                    },
+                    "fontFamily": {
+                        "body-base": ["Inter"],
+                        "label-caps": ["JetBrains Mono"],
+                        "display-lg": ["Inter"],
+                        "data-lg": ["JetBrains Mono"],
+                        "headline-md": ["Inter"],
+                        "data-sm": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "body-base": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "label-caps": ["10px", { "lineHeight": "12px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "display-lg": ["30px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "data-lg": ["18px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "data-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        /* Custom scrollbar for an industrial look */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0f1418; }
+        ::-webkit-scrollbar-thumb { background: #3e484f; border-radius: 0px; }
+        ::-webkit-scrollbar-thumb:hover { background: #87929a; }
+        
+        /* Subtle scanline effect for video player */
+        .scanlines::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 20;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface h-screen flex flex-col overflow-hidden selection:bg-primary-container selection:text-on-primary-container">
+<!-- TopNavBar (Derived from JSON & Prompt) -->
+<header class="flex justify-between items-center w-full px-container-padding h-16 bg-surface dark:bg-surface border-b border-outline-variant flex-shrink-0 z-50">
+<!-- Brand & Main Nav -->
+<div class="flex items-center gap-8 h-full">
+<div class="flex flex-col justify-center">
+<h1 class="font-display-lg text-display-lg text-primary uppercase tracking-tighter leading-none">V7 Command Center</h1>
+<span class="font-label-caps text-label-caps text-outline uppercase">Highway CCTV Dual-Engine Crash Detection &amp; Dispatch System</span>
+</div>
+<nav class="hidden md:flex h-full items-center gap-1 ml-4">
+<a class="h-full flex items-center px-3 text-primary border-b-2 border-primary font-bold hover:bg-surface-container-highest transition-colors" href="#">Dashboard</a>
+<a class="h-full flex items-center px-3 text-on-surface-variant font-body-base hover:bg-surface-container-highest transition-colors" href="#">Map View</a>
+<a class="h-full flex items-center px-3 text-on-surface-variant font-body-base hover:bg-surface-container-highest transition-colors" href="#">Analytics</a>
+<a class="h-full flex items-center px-3 text-on-surface-variant font-body-base hover:bg-surface-container-highest transition-colors" href="#">Reports</a>
+</nav>
+</div>
+<!-- Center Technical Indicators (Prompt Request) -->
+<div class="hidden xl:flex items-center gap-element-gap">
+<div class="border border-primary bg-primary/10 px-2 py-1 flex items-center gap-2">
+<div class="w-1.5 h-1.5 rounded-none bg-primary animate-pulse"></div>
+<span class="font-data-sm text-data-sm text-primary uppercase">AI DUAL ENGINE: YOLO11s ACTIVE</span>
+</div>
+<div class="border border-outline-variant bg-surface-container px-2 py-1">
+<span class="font-data-sm text-data-sm text-on-surface-variant uppercase">HARDWARE: GPU T4 READY</span>
+</div>
+<div class="border border-outline-variant bg-surface-container px-2 py-1 text-on-surface">
+<span class="font-data-sm text-data-sm" id="utc-clock">UTC 00:00:00</span>
+</div>
+</div>
+<!-- Trailing Actions & Profile -->
+<div class="flex items-center gap-4 h-full">
+<button class="hidden lg:flex items-center gap-2 border border-outline-variant bg-surface-container hover:bg-surface-container-highest transition-colors px-3 py-1.5">
+<span class="font-data-sm text-data-sm text-on-surface">System Status</span>
+</button>
+<div class="flex gap-1">
+<button class="p-1.5 text-on-surface-variant hover:text-primary hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">memory</span>
+</button>
+<button class="p-1.5 text-on-surface-variant hover:text-primary hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">terminal</span>
+</button>
+<button class="p-1.5 text-on-surface-variant hover:text-primary hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">schedule</span>
+</button>
+</div>
+<!-- Personnel Login Dropdown Area -->
+<div class="relative group h-full flex items-center cursor-pointer border-l border-outline-variant pl-4 ml-2">
+<div class="w-8 h-8 bg-surface-container-high border border-outline overflow-hidden rounded-none">
+<img class="w-full h-full object-cover" data-alt="A small, stylized profile icon representing a high-level system operator or manager, rendered in a strict minimalist, dark-mode aesthetic with stark white and subtle blue highlights." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB_MIpfkdLB5ZUd-dy1IiT-rg5MorsMJspjsJv0x8hcAbhVlNG9WukBtCcwmc6aT4mqh8GkC70UxazrEYaeYIP1Fct-MKU0LAEn9rPoDoOixjIL3qkC1sKDrmZz6BNo2-qAirJqoxlwtqTxocNinlfiAy0gaagnGFE5O4_BsYq5A1w12U4PUucnWucfv2lJEYE9hg3imw4sFkniDtOMff8z3sbPCh6UWIyTV6m8mRgWJ25H4tYSvMjn"/>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant ml-1 text-[18px]">arrow_drop_down</span>
+<!-- Dropdown Menu (Hidden by default, hover to show) -->
+<div class="absolute top-full right-0 mt-0 w-48 bg-surface-container border border-outline-variant shadow-lg hidden group-hover:block z-50">
+<div class="py-1 flex flex-col font-data-sm text-data-sm text-on-surface-variant">
+<a class="px-4 py-2 hover:bg-surface-container-highest hover:text-primary" href="#">Officer Login</a>
+<a class="px-4 py-2 hover:bg-surface-container-highest hover:text-primary" href="#">EMS Commander</a>
+<a class="px-4 py-2 hover:bg-surface-container-highest hover:text-primary" href="#">Fire Chief</a>
+<div class="border-t border-outline-variant my-1"></div>
+<a class="px-4 py-2 hover:bg-surface-container-highest text-primary" href="#">Manager (Active)</a>
+</div>
+</div>
+</div>
+</div>
+</header>
+<div class="flex flex-1 overflow-hidden">
+<!-- SideNavBar (JSON Derived) -->
+<aside class="hidden md:flex flex-col h-full py-4 bg-surface-container dark:bg-surface-container w-[280px] border-r border-outline-variant flex-shrink-0 z-40">
+<div class="px-4 mb-6">
+<div class="font-headline-md text-headline-md text-primary tracking-tight">Command V7</div>
+<div class="font-body-base text-body-base text-on-surface-variant mt-1">Active Ops</div>
+</div>
+<nav class="flex-1 flex flex-col gap-1 px-2">
+<a class="bg-primary-container text-on-primary-container border-l-4 border-primary px-3 py-2.5 flex items-center gap-3 transition-all duration-150" href="#">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">videocam</span>
+<span class="font-label-caps text-label-caps">Live Feed</span>
+</a>
+<a class="text-on-surface-variant hover:bg-surface-variant px-3 py-2.5 flex items-center gap-3 transition-all duration-150 border-l-4 border-transparent hover:border-outline" href="#">
+<span class="material-symbols-outlined text-[20px]">warning</span>
+<span class="font-label-caps text-label-caps">Accidents</span>
+</a>
+<a class="text-on-surface-variant hover:bg-surface-variant px-3 py-2.5 flex items-center gap-3 transition-all duration-150 border-l-4 border-transparent hover:border-outline" href="#">
+<span class="material-symbols-outlined text-[20px]">emergency_share</span>
+<span class="font-label-caps text-label-caps">Dispatch</span>
+</a>
+<a class="text-on-surface-variant hover:bg-surface-variant px-3 py-2.5 flex items-center gap-3 transition-all duration-150 border-l-4 border-transparent hover:border-outline" href="#">
+<span class="material-symbols-outlined text-[20px]">timeline</span>
+<span class="font-label-caps text-label-caps">Trajectory</span>
+</a>
+<a class="text-on-surface-variant hover:bg-surface-variant px-3 py-2.5 flex items-center gap-3 transition-all duration-150 border-l-4 border-transparent hover:border-outline" href="#">
+<span class="material-symbols-outlined text-[20px]">history</span>
+<span class="font-label-caps text-label-caps">Archive</span>
+</a>
+</nav>
+<div class="mt-auto px-4 flex flex-col gap-2 border-t border-outline-variant pt-4">
+<div class="flex flex-col gap-1 mb-4">
+<a class="text-on-surface-variant hover:text-primary flex items-center gap-2 py-1 transition-colors" href="#">
+<span class="material-symbols-outlined text-[16px]">settings</span>
+<span class="font-label-caps text-label-caps">Settings</span>
+</a>
+<a class="text-on-surface-variant hover:text-primary flex items-center gap-2 py-1 transition-colors" href="#">
+<span class="material-symbols-outlined text-[16px]">help_center</span>
+<span class="font-label-caps text-label-caps">Support</span>
+</a>
+</div>
+<button class="w-full bg-error-container text-on-error-container border border-error hover:bg-error hover:text-on-error transition-colors font-label-caps text-label-caps py-2 tracking-widest">
+                    FORCE LOGOUT
+                </button>
+</div>
+</aside>
+<!-- Main Dashboard Canvas -->
+<main class="flex-1 overflow-y-auto p-section-margin bg-background flex flex-col gap-section-margin pb-20">
+<!-- Top Section: Video Analyzer & Dispatch Report (2 Columns) -->
+<div class="grid grid-cols-1 xl:grid-cols-2 gap-section-margin">
+<!-- Left: Video Crash Analyzer -->
+<section class="bg-surface border border-outline-variant flex flex-col shadow-sm">
+<header class="px-4 py-2.5 bg-surface-container-high border-b border-outline-variant flex justify-between items-center">
+<h2 class="font-label-caps text-label-caps text-on-surface uppercase tracking-wider">Video Crash Analyzer</h2>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-error animate-ping"></span>
+<span class="font-label-caps text-label-caps text-error tracking-widest">LIVE INGEST</span>
+</div>
+</header>
+<div class="p-4 flex flex-col gap-4 flex-1">
+<!-- Dropzone -->
+<div class="border border-dashed border-outline-variant hover:border-primary bg-surface-container p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-colors group h-24">
+<span class="material-symbols-outlined text-outline group-hover:text-primary mb-1">upload_file</span>
+<span class="font-data-sm text-data-sm text-on-surface-variant group-hover:text-on-surface">Drag &amp; Drop Footage</span>
+<span class="font-label-caps text-label-caps text-outline mt-1">(Supports MP4, MOV, AVI)</span>
+</div>
+<!-- Controls -->
+<div class="flex flex-wrap items-center justify-between gap-2 bg-surface-container-low p-2 border border-outline-variant">
+<div class="flex gap-2">
+<button class="px-3 py-1 border border-outline bg-surface-container hover:bg-surface-container-highest font-data-sm text-data-sm text-on-surface transition-colors flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">movie</span> sample4.mp4
+                                </button>
+<button class="px-3 py-1 border border-outline bg-surface-container hover:bg-surface-container-highest font-data-sm text-data-sm text-on-surface transition-colors flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">movie</span> s1.mp4
+                                </button>
+</div>
+<button class="bg-primary text-on-primary border border-primary px-4 py-1.5 font-label-caps text-label-caps hover:bg-primary/90 transition-colors shadow-[0_0_10px_rgba(56,189,248,0.2)]">
+                                RUN V7 DUAL-ENGINE ACCIDENT DETECTION
+                            </button>
+</div>
+<!-- Video Player Area -->
+<div class="relative w-full aspect-video bg-black border border-outline-variant overflow-hidden scanlines flex-1 min-h-[300px]">
+<!-- Simulated Video Feed -->
+<img class="absolute inset-0 w-full h-full object-cover opacity-80 filter contrast-125 saturate-50" data-alt="A highly detailed, technical simulation of a highway traffic camera feed displaying an active vehicle collision. Bounding boxes in stark primary colors highlight vehicles with associated floating data labels (confidence scores, velocity). A prominent red overlay indicates the exact point of impact. The scene is illuminated by harsh, artificial night-time highway lighting against a dark environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDXVQy9XKyeI9QVRVtSM0yLUOlkcT9ZjqlilcbHew65OBwKa6MX809HTIlXPwrlgUVASbB5qFLhZi8gMiCXjD1k17rrdpHSyeTfuW8CeUeQItWOMbXtrg6Oh0NiXoSZqwBBEm4lml7bCv4PEMDVVWsKv-RJFTEbhFIPRtNjL9S5sY0uCJshLtRjD8nEISUdUXlF2z_0ocSMJl3uc-z1q6q9-5kDXhep0dkicI4Zn6fl3wuWoQT4qopT"/>
+<!-- Overlays -->
+<div class="absolute top-3 left-3 bg-surface/90 border border-primary px-2 py-1 z-30 flex items-center gap-2 backdrop-blur-sm">
+<span class="material-symbols-outlined text-primary text-[14px]">analytics</span>
+<span class="font-label-caps text-label-caps text-primary">AI ANNOTATED FEED</span>
+</div>
+<div class="absolute bottom-3 right-3 bg-error-container/90 border border-error px-2 py-1 z-30 flex items-center gap-2 backdrop-blur-sm">
+<span class="w-1.5 h-1.5 bg-error rounded-none animate-pulse"></span>
+<span class="font-data-sm text-data-sm text-error font-bold">REC 5s TELEMETRY</span>
+</div>
+<div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 border border-error/50 w-32 h-32 flex items-center justify-center z-20 pointer-events-none">
+<div class="w-full h-[1px] bg-error/30 absolute"></div>
+<div class="h-full w-[1px] bg-error/30 absolute"></div>
+<span class="absolute top-full mt-1 text-error font-data-sm text-data-sm bg-surface/80 px-1 border border-error/50">TARGET LOCK</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Right: Emergency Dispatch Report -->
+<section class="bg-surface border border-outline-variant flex flex-col shadow-sm">
+<header class="px-4 py-2.5 bg-surface-container-high border-b border-outline-variant flex justify-between items-center">
+<h2 class="font-label-caps text-label-caps text-on-surface uppercase tracking-wider">Emergency Dispatch Report</h2>
+<span class="bg-primary-container text-on-primary-container border border-primary px-3 py-0.5 font-label-caps text-label-caps">READY</span>
+</header>
+<div class="flex-1 overflow-x-auto">
+<table class="w-full text-left border-collapse min-w-[500px]">
+<thead>
+<tr class="bg-surface-container border-b border-outline-variant">
+<th class="py-2 px-4 font-label-caps text-label-caps text-on-surface-variant w-1/3">Parameter</th>
+<th class="py-2 px-4 font-label-caps text-label-caps text-on-surface-variant w-2/3">Telemetry Data</th>
+</tr>
+</thead>
+<tbody class="font-data-sm text-data-sm divide-y divide-outline-variant">
+<tr class="hover:bg-surface-container-highest transition-colors group">
+<td class="py-2.5 px-4 text-on-surface-variant font-medium">01. Flag / Confidence</td>
+<td class="py-2.5 px-4 flex items-center justify-between">
+<span class="text-primary font-bold">99.2% DETECTED</span>
+<span class="material-symbols-outlined text-primary text-[16px] opacity-0 group-hover:opacity-100">verified</span>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-highest transition-colors">
+<td class="py-2.5 px-4 text-on-surface-variant font-medium">02. Map / Camera ID</td>
+<td class="py-2.5 px-4 text-on-surface">NH-44 Expressway [CAM-A09-N]</td>
+</tr>
+<tr class="hover:bg-surface-container-highest transition-colors">
+<td class="py-2.5 px-4 text-on-surface-variant font-medium">03. Evidence Lock</td>
+<td class="py-2.5 px-4 flex gap-2">
+<button class="border border-outline px-2 py-0.5 text-on-surface hover:text-primary hover:border-primary transition-colors flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">image</span> Frame 1
+                                        </button>
+<button class="border border-outline px-2 py-0.5 text-on-surface hover:text-primary hover:border-primary transition-colors flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">play_circle</span> -5s Clip
+                                        </button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-highest transition-colors">
+<td class="py-2.5 px-4 text-on-surface-variant font-medium">04. Collision Type</td>
+<td class="py-2.5 px-4 text-on-surface">Rear-end, High Velocity Delta</td>
+</tr>
+<tr class="hover:bg-surface-container-highest transition-colors">
+<td class="py-2.5 px-4 text-on-surface-variant font-medium">05. Primary Vehicle</td>
+<td class="py-2.5 px-4">
+<span class="inline-block border border-secondary text-secondary bg-secondary/10 px-2 py-0.5 font-label-caps text-label-caps">CLASS: SEDAN (CAR)</span>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-highest transition-colors">
+<td class="py-2.5 px-4 text-on-surface-variant font-medium">06. Secondary Vehicle</td>
+<td class="py-2.5 px-4">
+<span class="inline-block border border-tertiary text-tertiary bg-tertiary/10 px-2 py-0.5 font-label-caps text-label-caps">CLASS: COMMERCIAL (TRUCK)</span>
+</td>
+</tr>
+<tr class="bg-error-container/10 border-l-2 border-l-error hover:bg-error-container/20 transition-colors">
+<td class="py-2.5 px-4 text-on-surface-variant font-medium pl-3">07. Severity Index</td>
+<td class="py-2.5 px-4">
+<span class="inline-block border border-error text-error bg-error/10 px-2 py-0.5 font-label-caps text-label-caps shadow-[0_0_8px_rgba(255,180,171,0.2)]">CRITICAL - IMMEDIATE DISPATCH</span>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-highest transition-colors">
+<td class="py-2.5 px-4 text-on-surface-variant font-medium">08. Hit-and-Run Suspect</td>
+<td class="py-2.5 px-4 text-on-surface">NEGATIVE (Both vehicles stationary)</td>
+</tr>
+<tr class="hover:bg-surface-container-highest transition-colors">
+<td class="py-2.5 px-4 text-on-surface-variant font-medium">09. Traffic Bottleneck</td>
+<td class="py-2.5 px-4 text-tertiary flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">speed</span> FLOW REDUCED TO 15 KM/H
+                                    </td>
+</tr>
+<tr class="hover:bg-surface-container-highest transition-colors">
+<td class="py-2.5 px-4 text-on-surface-variant font-medium">10. Sec. Collision Warning</td>
+<td class="py-2.5 px-4">
+<span class="inline-block border border-tertiary text-tertiary px-2 py-0.5 font-label-caps text-label-caps animate-pulse">ELEVATED RISK (CURVE APPROACH)</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="p-4 bg-surface-container-low border-t border-outline-variant flex justify-end gap-3">
+<button class="border border-outline text-on-surface px-4 py-2 font-label-caps text-label-caps hover:bg-surface-container-highest transition-colors">DISCARD FALSE ALARM</button>
+<button class="bg-error text-on-error px-6 py-2 font-label-caps text-label-caps tracking-widest hover:bg-error/90 transition-colors shadow-[0_0_15px_rgba(255,180,171,0.3)]">INITIATE GLOBAL DISPATCH</button>
+</div>
+</section>
+</div>
+<!-- Middle Section: Dispatch Cards (2x2 Grid) -->
+<section>
+<div class="flex items-center gap-2 mb-3 px-1">
+<span class="material-symbols-outlined text-outline">local_shipping</span>
+<h3 class="font-headline-md text-headline-md text-on-surface">Active Unit Status</h3>
+<div class="h-[1px] flex-1 bg-outline-variant ml-4"></div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-element-gap">
+<!-- EMS Card -->
+<div class="bg-surface-container border-t-2 border-t-primary border border-outline-variant p-4 flex flex-col gap-3 relative overflow-hidden group">
+<div class="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+<span class="material-symbols-outlined text-[48px]">medical_services</span>
+</div>
+<div class="flex justify-between items-start relative z-10">
+<span class="font-label-caps text-label-caps text-on-surface-variant">EMS UNIT RESPONSE</span>
+<span class="bg-primary/20 text-primary border border-primary px-1.5 py-0.5 font-label-caps text-label-caps animate-pulse">DISPATCHED</span>
+</div>
+<div class="relative z-10">
+<div class="font-data-lg text-data-lg text-on-surface">MED-EVAC 04</div>
+<div class="font-body-base text-body-base text-on-surface-variant">Base: Regional Med Center</div>
+</div>
+<div class="mt-auto border-t border-outline-variant pt-2 flex justify-between items-center relative z-10">
+<span class="font-data-sm text-data-sm text-outline">ETA TO SCENE:</span>
+<span class="font-data-lg text-data-lg text-primary">04m 12s</span>
+</div>
+</div>
+<!-- Police Card -->
+<div class="bg-surface-container border-t-2 border-t-primary border border-outline-variant p-4 flex flex-col gap-3 relative overflow-hidden group">
+<div class="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+<span class="material-symbols-outlined text-[48px]">local_police</span>
+</div>
+<div class="flex justify-between items-start relative z-10">
+<span class="font-label-caps text-label-caps text-on-surface-variant">HIGHWAY PATROL</span>
+<span class="bg-primary/20 text-primary border border-primary px-1.5 py-0.5 font-label-caps text-label-caps">DISPATCHED</span>
+</div>
+<div class="relative z-10">
+<div class="font-data-lg text-data-lg text-on-surface">CRUISER HP-77</div>
+<div class="font-body-base text-body-base text-on-surface-variant">Base: Sector 9 Station</div>
+</div>
+<div class="mt-auto border-t border-outline-variant pt-2 flex justify-between items-center relative z-10">
+<span class="font-data-sm text-data-sm text-outline">ETA TO SCENE:</span>
+<span class="font-data-lg text-data-lg text-primary">02m 45s</span>
+</div>
+</div>
+<!-- Fire Card -->
+<div class="bg-surface-container border-t-2 border-t-outline border border-outline-variant p-4 flex flex-col gap-3 relative overflow-hidden group opacity-80 hover:opacity-100 transition-opacity">
+<div class="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+<span class="material-symbols-outlined text-[48px]">fire_truck</span>
+</div>
+<div class="flex justify-between items-start relative z-10">
+<span class="font-label-caps text-label-caps text-on-surface-variant">FIRE &amp; RESCUE</span>
+<span class="bg-surface border border-outline text-outline px-1.5 py-0.5 font-label-caps text-label-caps">STANDBY</span>
+</div>
+<div class="relative z-10">
+<div class="font-data-lg text-data-lg text-on-surface">ENGINE CO. 12</div>
+<div class="font-body-base text-body-base text-on-surface-variant">Awaiting severity confirmation</div>
+</div>
+<div class="mt-auto border-t border-outline-variant pt-2 flex justify-between items-center relative z-10">
+<span class="font-data-sm text-data-sm text-outline">STATUS:</span>
+<span class="font-data-sm text-data-sm text-on-surface">PREPPED IN BAY</span>
+</div>
+</div>
+<!-- Toll Authority Card -->
+<div class="bg-surface-container border-t-2 border-t-tertiary border border-outline-variant p-4 flex flex-col gap-3 relative overflow-hidden group">
+<div class="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+<span class="material-symbols-outlined text-[48px]">toll</span>
+</div>
+<div class="flex justify-between items-start relative z-10">
+<span class="font-label-caps text-label-caps text-on-surface-variant">TOLL AUTHORITY</span>
+<span class="bg-tertiary/20 text-tertiary border border-tertiary px-1.5 py-0.5 font-label-caps text-label-caps">ACTIVE</span>
+</div>
+<div class="relative z-10">
+<div class="font-data-lg text-data-lg text-on-surface">LANE CONTROL</div>
+<div class="font-body-base text-body-base text-on-surface-variant">Action: Gantry Signage Update</div>
+</div>
+<div class="mt-auto border-t border-outline-variant pt-2 flex justify-between items-center relative z-10">
+<span class="font-data-sm text-data-sm text-outline">LANE STATUS:</span>
+<span class="font-data-sm text-data-sm text-tertiary">L2 &amp; L3 CLOSED (X)</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Bottom Panel: Map & Notifications -->
+<section class="flex flex-col lg:flex-row gap-element-gap h-[350px] min-h-[350px]">
+<!-- Left (2/3): Interactive Map Simulation -->
+<div class="flex-[2] bg-surface border border-outline-variant flex flex-col relative overflow-hidden">
+<!-- Map Background -->
+<div class="absolute inset-0 z-0 bg-background" data-alt="A dark-mode tactical map visualization showing a complex highway network. The map is rendered in deep blacks and slate greys with stark, glowing neon blue lines delineating the road infrastructure. A distinct red pulsing cluster indicates the accident site. The aesthetic is strictly utilitarian, resembling an aerospace or military command interface, devoid of typical consumer map clutter." data-location="Highway" style="background-image: url('https://www.gstatic.com/labs-code/stitch/stitch-placeholder-300x300.svg')"></div>
+<!-- Overlay Grid Pattern -->
+<div class="absolute inset-0 z-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSA0MCAwIEwgMCAwIDAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyNTUsMjU1LDI1NSwwLjA1KSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] pointer-events-none opacity-50"></div>
+<!-- Header -->
+<div class="relative z-10 px-4 py-2 bg-surface/80 backdrop-blur-md border-b border-outline-variant flex justify-between items-center">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-outline text-[18px]">my_location</span>
+<span class="font-label-caps text-label-caps text-on-surface">Interactive Map Simulation Viewport</span>
+</div>
+<span class="font-data-sm text-data-sm text-on-surface-variant border border-outline px-2 py-0.5 bg-surface/50">NODE: NH-44_SEC9</span>
+</div>
+<!-- HUD Elements overlay on map -->
+<div class="relative z-10 flex-1 pointer-events-none p-4 flex flex-col justify-between">
+<!-- Top right data -->
+<div class="self-end bg-surface/90 border border-outline-variant p-2 font-data-sm text-data-sm text-on-surface flex flex-col gap-1 backdrop-blur-sm pointer-events-auto">
+<div class="flex justify-between gap-4"><span>LAT:</span> <span class="text-primary">34.0522 N</span></div>
+<div class="flex justify-between gap-4"><span>LNG:</span> <span class="text-primary">-118.2437 W</span></div>
+<div class="w-full h-[1px] bg-outline-variant my-1"></div>
+<div class="flex justify-between gap-4"><span>SAT:</span> <span>LINKED (8)</span></div>
+</div>
+<!-- Bottom Controls -->
+<div class="flex gap-2 pointer-events-auto mt-auto">
+<button class="bg-surface-container-high border border-outline-variant text-on-surface hover:bg-surface-container-highest px-4 py-2 font-label-caps text-label-caps transition-colors shadow-lg">
+                                START SIMULATION
+                            </button>
+<button class="bg-error-container/20 border border-error text-error hover:bg-error-container/40 px-4 py-2 font-label-caps text-label-caps uppercase tracking-wide transition-colors shadow-lg backdrop-blur-sm">
+                                TRIGGER DEMO
+                            </button>
+<div class="ml-auto bg-surface/80 border border-outline-variant p-1 flex gap-1 backdrop-blur-sm">
+<button class="w-8 h-8 flex items-center justify-center hover:bg-surface-container-highest transition-colors"><span class="material-symbols-outlined">add</span></button>
+<button class="w-8 h-8 flex items-center justify-center hover:bg-surface-container-highest transition-colors"><span class="material-symbols-outlined">remove</span></button>
+</div>
+</div>
+</div>
+</div>
+<!-- Right (1/3): Live Emergency Command Notifications -->
+<div class="flex-1 bg-surface border border-outline-variant flex flex-col shadow-sm">
+<header class="px-4 py-2.5 bg-surface-container-high border-b border-outline-variant flex items-center gap-2">
+<span class="material-symbols-outlined text-outline text-[18px]">terminal</span>
+<h2 class="font-label-caps text-label-caps text-on-surface uppercase">Live Command Log</h2>
+</header>
+<div class="flex-1 p-2 overflow-y-auto flex flex-col gap-1 bg-background" id="notification-feed">
+<!-- Feed Items -->
+<div class="p-2 border-l-2 border-l-outline-variant bg-surface-container-low font-data-sm text-data-sm text-on-surface-variant flex gap-3">
+<span class="text-outline whitespace-nowrap">[14:30:00]</span>
+<span>System initialization sequence initiated. UTC sync nominal.</span>
+</div>
+<div class="p-2 border-l-2 border-l-primary bg-surface-container-low font-data-sm text-data-sm text-on-surface flex gap-3">
+<span class="text-primary whitespace-nowrap">[14:31:45]</span>
+<span>YOLO11s Engine Engaged. Processing node NH-44 active.</span>
+</div>
+<div class="p-2 border-l-2 border-l-error bg-error-container/10 font-data-sm text-data-sm text-on-surface flex gap-3">
+<span class="text-error whitespace-nowrap font-bold">[14:32:01]</span>
+<span>ANOMALY DETECTED: Rapid deceleration event on Cam-A09.</span>
+</div>
+<div class="p-2 border-l-2 border-l-error bg-error-container/20 font-data-sm text-data-sm text-on-surface flex gap-3 shadow-inner">
+<span class="text-error whitespace-nowrap font-bold">[14:32:03]</span>
+<span>CONFIRMED COLLISION. Severity Index: Critical. Generating telemetry package.</span>
+</div>
+<div class="p-2 border-l-2 border-l-primary bg-surface-container-low font-data-sm text-data-sm text-on-surface flex gap-3">
+<span class="text-primary whitespace-nowrap">[14:32:08]</span>
+<span>Dispatch protocols activated. Awaiting operator confirmation.</span>
+</div>
+<div class="p-2 border-l-2 border-l-tertiary bg-surface-container-low font-data-sm text-data-sm text-on-surface flex gap-3">
+<span class="text-tertiary whitespace-nowrap">[14:32:10]</span>
+<span>Automated Gantry Signage updated: "ACCIDENT AHEAD - REDUCE SPEED".</span>
+</div>
+<div class="p-2 border-l-2 border-l-outline-variant bg-surface-container-low font-data-sm text-data-sm text-on-surface-variant flex gap-3">
+<span class="text-outline whitespace-nowrap">[14:32:15]</span>
+<span class="animate-pulse">Awaiting manual override or global dispatch...</span>
+</div>
+</div>
+</div>
+</section>
+</main>
+</div>
+<!-- Footer (Derived from JSON) -->
+<footer class="fixed bottom-0 w-full flex justify-between px-container-padding py-1 h-8 z-50 bg-surface-container-lowest dark:bg-surface-container-lowest border-t border-outline-variant">
+<div class="flex items-center h-full">
+<span class="font-label-caps text-label-caps text-on-surface-variant tracking-widest">AeroVigil Systems - UTC-0 Synchronization Active</span>
+</div>
+<div class="flex items-center gap-4 h-full font-data-sm text-data-sm">
+<a class="text-on-secondary-fixed-variant hover:text-primary cursor-pointer transition-colors" href="#">API Status</a>
+<a class="text-on-secondary-fixed-variant hover:text-primary cursor-pointer transition-colors" href="#">Emergency Protocols</a>
+<a class="text-on-secondary-fixed-variant hover:text-primary cursor-pointer transition-colors" href="#">System Logs</a>
+</div>
+</footer>
+<!-- Simple JS for UTC Clock -->
+<script>
+        function updateClock() {
+            const now = new Date();
+            const utcString = now.toISOString().split('T')[1].split('.')[0];
+            document.getElementById('utc-clock').textContent = `UTC ${utcString}`;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+    </script>
+</body></html>
