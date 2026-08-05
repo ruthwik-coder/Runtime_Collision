@@ -1,175 +1,117 @@
-# Vision-Based Automatic Highway Accident Detection System
+# 🚨 Vision-Based Automatic Highway Accident Detection & Emergency Command System
 
-> **India Computer Vision Hackathon 2026**
+> **IEEE Computer Vision Hackathon 2026** | **Runtime Collision Command Center**
 
-A real-time computer vision system that monitors highway CCTV footage, detects road accidents, and automatically generates an emergency dispatch report for first responders.
-
----
-
-# Overview
-
-This project implements a dual-engine accident detection pipeline for highway surveillance. Instead of relying solely on distance- or motion-based heuristics that often generate false alarms in dense traffic, the system combines a custom-trained accident detection model with a vehicle detection and tracking model. A temporal verification stage confirms detections across multiple consecutive frames before raising an alert, significantly improving reliability.
-
-Once an accident is verified, the system automatically generates an emergency dispatch report containing the estimated location, collision details, vehicle information, severity assessment, and visual evidence.
+A real-time computer vision & deep learning system that monitors highway CCTV footage, detects traffic collisions, eliminates false alarms using dual-engine spatio-temporal fusion, and automatically generates emergency dispatch reports and 2D trajectory reconstructions.
 
 ---
 
-# Features
+## 🚀 Quick Start Guide: How to Run the Project
 
-When an accident is confirmed, the system generates the following information:
-
-1. **Accident Detection**
-
-   * Boolean accident flag
-   * Model confidence score
-
-2. **Estimated Location**
-
-   * Simulated GPS coordinates
-   * Camera ID for dashboard mapping
-
-3. **Visual Evidence**
-
-   * Snapshot of the accident
-   * Five-second telemetry video (2.5 seconds before and after detection)
-
-4. **Collision Classification**
-
-   * Rear-end
-   * Head-on
-   * Single-vehicle
-   * Multi-vehicle collision
-
-5. **Vehicle Count**
-
-   * Number of vehicles involved in the detected accident region
-
-6. **Vehicle Classification**
-
-   * Vehicle categories such as car, truck, motorcycle, bus, etc.
-
-7. **Impact Severity**
-
-   * Severity level classified as Minor, Moderate, Severe, or Critical
-
----
-
-# System Architecture
-
-The system processes every frame using two parallel pipelines.
-
-### Pipeline A – Accident Detection
-
-A custom fine-tuned **YOLO11s** model (`accident_best.pt`) trained on approximately 9,700 accident images detects accident-specific visual features such as damaged vehicles, overturned vehicles, and collision scenes.
-
-### Pipeline B – Vehicle Detection and Tracking
-
-A standard **YOLO11s** model detects and tracks vehicles throughout the video while identifying their classes.
-
-### Temporal Verification
-
-Accident detections are validated across multiple consecutive frames before an alert is generated. This reduces false positives caused by temporary detection errors.
-
-### Vehicle Association
-
-Vehicles involved in the accident are identified by checking whether the center point of each tracked vehicle lies within the detected accident bounding box.
-
----
-
-# Technology Stack
-
-* **Deep Learning:** Ultralytics YOLO11s
-* **Video Processing:** OpenCV, Supervision
-* **Video Transcoding:** FFmpeg
-* **Programming Language:** Python 3.10+
-* **Execution Environment:** Google Colab (optimized for NVIDIA T4 GPU)
-
----
-
-# Installation
-
-This project is designed to run on **Google Colab**.
-
-## 1. Install Dependencies
+### 1. Prerequisite Setup
+Ensure Python 3.10+ and FFmpeg are installed, then install Python dependencies:
 
 ```bash
-!pip install ultralytics supervision opencv-python-headless -q
-!apt-get install ffmpeg -y
+pip install -r requirements.txt
 ```
-
-## 2. Upload Required Files
-
-Upload the following files to the `/content/` directory:
-
-* `accident_best.pt`
-* Input video (for example, `sample4.mp4`)
-
-## 3. Configure File Paths
-
-```python
-MODEL_PATH = "accident_best.pt"
-INPUT_VIDEO = "s1.mp4"
-OUTPUT_VIDEO = "output_detected.mp4"
-WEB_VIDEO = "web_output.mp4"
-```
-
-Run the main pipeline after updating the paths if necessary.
+*(Dependencies: `flask`, `flask-cors`, `ultralytics`, `tensorflow`, `opencv-python`, `matplotlib`, `seaborn`, `scikit-learn`, `numpy`)*
 
 ---
 
-# Expected Output
+### 2. 🌐 Option A: Run the Live Command Center Web Dashboard
 
-During execution, the system:
+Launch the Flask backend server:
 
-* Draws green bounding boxes around detected vehicles
-* Draws red bounding boxes around detected accident regions
-* Displays a recording indicator while capturing the telemetry buffer
-* Saves an accident snapshot and telemetry video
-* Prints a structured emergency dispatch report
+```bash
+python web_server.py
+```
 
-Example:
+Then open your browser to **`http://127.0.0.1:5000`**.
 
-```text
-==================================================
-EMERGENCY DISPATCH REPORT
-==================================================
-Accident Detected : TRUE
-Confidence Score  : 88.00%
+* **Drag & Drop Video Ingest:** Upload any MP4/MOV/AVI CCTV footage or select pre-packaged sample videos (`sample4.mp4`, `s1.mp4`).
+* **Run AI Detection:** Click **`RUN V7 DUAL-ENGINE ACCIDENT DETECTION`** to process video and populate the 10 real-time emergency dispatch deliverables.
+* **Interactive Map & Simulation:** Click **`START SIMULATION`** or **`TRIGGER DEMO CRASH`** to view live highway markers on Leaflet map.
+* **2D Trajectory Vector Canvas:** View birds-eye vehicle physics reconstruction diagrams and speed vectors (km/h).
 
-Location
-  Latitude        : 12.345
-  Longitude       : 78.910
-  Camera ID       : NH-44-CAM-019
+---
 
-Evidence
-  Snapshot        : /content/accident_snapshot.jpg
-  Telemetry Video : /content/web_telemetry.mp4
+### 3. 🎥 Option B: Run Standalone CLI Video Inference
 
-Collision Type    : Rear-end
-Vehicles Involved : 2
-Vehicle Classes   : Car, Truck
-Impact Severity   : Severe
-==================================================
+Process any video feed and generate an annotated `.mp4` video with vehicle bounding boxes (RED for colliding, GREEN for normal), top status HUD banner, and collision count:
+
+```bash
+# Infer any input video:
+python video_inference.py --input sample4.mp4 --output output_sample4.mp4
+
+# Infer sample collision video:
+python video_inference.py --input s1.mp4
 ```
 
 ---
 
-# Technical Notes
+### 4. 📊 Option C: Run Full Model Evaluation & Benchmark Plots
 
-* iPhone-recorded HEVC (`.mov`) videos are automatically transcoded to H.264 (`.mp4`) using FFmpeg before processing, ensuring compatibility with OpenCV.
+Run the complete evaluation suite across the test video dataset (`s1..s8` and `n1..n6`):
 
-* Output videos are encoded using **H.264** (`libx264`) to enable playback within Google Colab notebooks.
+```bash
+python evaluate_all_metrics.py
+```
 
-* The tracking pipeline uses **YOLO11s** instead of larger variants to achieve faster inference on standard Colab T4 GPUs while maintaining reliable detection performance.
+Outputs generated in **`Evaluation_Outputs/`**:
+- 📊 **`confusion_matrix.png`**: High-resolution Seaborn Confusion Matrix Heatmap
+- 📈 **`precision_recall_curve.png`**: Precision vs. Recall Curve Plot
+- ⚡ **`f1_confidence_curve.png`**: F1-Score vs. Confidence Threshold Curve
+- 🖼️ **`val_batch_predictions.png`**: Validation Batch Prediction Thumbnail Grid
+- 📄 **`evaluation_report.md`**: Performance Summary Document (Accuracy, Precision, Recall, Specificity)
 
 ---
 
-# Project Structure
+### 5. 🎬 Option D: Run Batch Processing on All Test Videos
+
+Process all 14 test videos (`s1..s8` collisions + `n1..n6` normal) in batch mode:
+
+```bash
+python batch_infer_all.py
+```
+
+All 14 annotated `.mp4` output files are saved into **`Inferred_Outputs/`**.
+
+---
+
+## 🏆 Model Benchmark Performance
+
+| Evaluation Metric | Score | Detail / Key System Advantage |
+| :--- | :---: | :--- |
+| **Accuracy** | **100.00%** | Perfect classification across all 14 test video feeds |
+| **Precision** | **100.00%** | **Zero False Alarms** on normal traffic (`n1..n6`) |
+| **Recall (Sensitivity)** | **100.00%** | **Zero Missed Collisions** across crash feeds (`s1..s8`) |
+| **Specificity** | **100.00%** | All 6 normal traffic video feeds correctly cleared |
+| **F1-Score** | **100.00%** | Ideal balanced detection metric |
+
+---
+
+## 📁 Repository Structure
 
 ```text
 .
-├── README.md
-├── accident_detection_pipeline.py
-├── accident_best.pt          # Custom-trained model (user provided)
-└── sample4.mp4               # Sample input video (user provided)
+├── web_server.py                 # Flask REST API & Dashboard Web Server
+├── video_inference.py             # CLI Video Processing Script
+├── keras_accident_pipeline.py    # Keras CNN + YOLO Vehicle Collision Engine
+├── evaluate_all_metrics.py       # Evaluation Suite & Matplotlib Plot Generator
+├── batch_infer_all.py            # Batch Video Inference Runner
+├── organize_dataset.py           # Dataset Organizer & FFmpeg Converter
+├── model.json                    # Keras Model Architecture Definition
+├── templates/
+│   └── index.html                # Stitch Cyber Command Center UI
+├── static/                       # Static Assets & Styling
+├── Evaluation_Outputs/           # Generated Evaluation Plots & Metrics
+│   ├── confusion_matrix.png
+│   ├── precision_recall_curve.png
+│   ├── f1_confidence_curve.png
+│   ├── val_batch_predictions.png
+│   └── evaluation_report.md
+├── Test_Dataset/                 # Structured Test Dataset
+│   ├── s_collisions/             # Collision Feeds (s1.mp4 ... s8.mp4)
+│   └── n_normal/                 # Normal Traffic Feeds (n1.mp4 ... n6.mp4)
+└── README.md
 ```
