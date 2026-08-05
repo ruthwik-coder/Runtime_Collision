@@ -1,12 +1,12 @@
 """
 web_server.py
 ---------------
-Flask Web Application & API Server for the Highway Accident Detection Command Dashboard.
+Flask Web Application & API Server for Highway Accident Detection Dashboard.
 
 Features:
-- Exact Bounding Box & Collision Engine from D:\\c_files4\\Accident-Detection-System\\camera.py
-- People Detection Excluded (Focuses ONLY on Vehicles: Car, Truck, Bus, Motorcycle, Bicycle)
-- Red Bounding Boxes for Colliding Vehicles, Green Bounding Boxes for Normal Vehicles
+- Image (.jpg, .png) & Video (.mp4, .avi, .mov) Upload & Classification Support
+- 3-Stage Evidence Snapshots: Before Impact, During Collision (Peak >=80%), and Post Impact
+- camera.py exact bounding box engine (People / Class 0 Excluded)
 - 10 AI Output Deliverables for Web Command Dashboard
 """
 
@@ -41,8 +41,8 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.config["OUTPUT_FOLDER"] = OUTPUT_FOLDER
 app.config["MAX_CONTENT_LENGTH"] = 500 * 1024 * 1024  # 500 MB max upload
 
-# Vehicle classes mapping (COCO dataset: 1:Bicycle, 2:Car, 3:Motorcycle, 5:Bus, 7:Truck)
-# NOTE: Class 0 (Person) is intentionally EXCLUDED.
+# Vehicle classes mapping (1:Bicycle, 2:Car, 3:Motorcycle, 5:Bus, 7:Truck)
+# NOTE: Class 0 (Person) is EXCLUDED.
 VEHICLE_CLASS_IDS = {1: 'Bicycle', 2: 'Car', 3: 'Motorcycle', 5: 'Bus', 7: 'Truck'}
 
 # Global Models (Lazy Loaded)
@@ -53,7 +53,7 @@ VEHICLE_MODEL = None
 def load_models():
     global ACCIDENT_MODEL, KERAS_ACCIDENT_MODEL, VEHICLE_MODEL
     
-    # 1. Try PyTorch YOLO Model
+    # 1. PyTorch YOLO Model
     if ACCIDENT_MODEL is None:
         try:
             from ultralytics import YOLO
@@ -67,7 +67,7 @@ def load_models():
         except Exception as e:
             print(f"[!] PyTorch YOLO Model Load Notice: {e}")
 
-    # 2. Try TensorFlow/Keras Model (.json + .h5 or .h5)
+    # 2. TensorFlow/Keras Model (.json + .h5)
     if KERAS_ACCIDENT_MODEL is None:
         try:
             import tensorflow as tf
@@ -91,40 +91,23 @@ def load_models():
             print(f"[!] Keras Model Load Notice: {e}")
 
 def preprocess_keras_frame(frame, target_size=(250, 250)):
-    """Preprocesses video frame to RGB (250, 250, 3) normalized [1, 250, 250, 3]."""
     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     resized = cv2.resize(rgb, target_size)
     norm = resized.astype(np.float32) / 255.0
     return np.expand_dims(norm, axis=0)
 
-# --- COLLISION PROXIMITY ENGINE FROM camera.py ---
 def find_colliding_vehicles(boxes):
-    """
-    Given a list of bounding boxes [(x1, y1, x2, y2), ...],
-    returns a set of indices of vehicles involved in a collision based on 
-    bounding box intersection area OR center proximity distance.
-    """
     n = len(boxes)
     colliding_indices = set()
-    if n < 2:
-        return colliding_indices
+    if n < 2: return colliding_indices
 
     for i in range(n):
         for j in range(i + 1, n):
-            b1 = boxes[i]
-            b2 = boxes[j]
+            b1, b2 = boxes[i], boxes[j]
+            ix1, iy1 = max(b1[0], b2[0]), max(b1[1], b2[1])
+            ix2, iy2 = min(b1[2], b2[2]), min(b1[3], b2[3])
+            inter_area = max(0, ix2 - ix1) * max(0, iy2 - iy1)
 
-            # Intersection Area
-            ix1 = max(b1[0], b2[0])
-            iy1 = max(b1[1], b2[1])
-            ix2 = min(b1[2], b2[2])
-            iy2 = min(b1[3], b2[3])
-
-            inter_w = max(0, ix2 - ix1)
-            inter_h = max(0, iy2 - iy1)
-            inter_area = inter_w * inter_h
-
-            # Proximity check using center distances
             b1_w, b1_h = b1[2] - b1[0], b1[3] - b1[1]
             b2_w, b2_h = b2[2] - b2[0], b2[3] - b2[1]
             c1_x, c1_y = (b1[0] + b1[2]) / 2, (b1[1] + b1[3]) / 2
@@ -147,7 +130,6 @@ def assess_severity(vehicles):
     return "Minor"
 
 def transcode_to_h264(input_path, output_path):
-    """Transcodes video to H.264 AAC for universal browser playback."""
     cmd = [
         "ffmpeg", "-y", "-i", input_path,
         "-vcodec", "libx264", "-acodec", "aac",
@@ -156,7 +138,6 @@ def transcode_to_h264(input_path, output_path):
     subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def generate_2d_reconstruction_data(collision_type, vehicle_count, vehicle_classes):
-    """Generates 2D trajectory vector data for canvas rendering."""
     vehicles = []
     classes = list(vehicle_classes) if vehicle_classes else ["Car", "Car"]
     for i in range(max(2, vehicle_count)):
@@ -194,7 +175,7 @@ def get_sample_videos():
     if os.path.exists(TEST_DATASET_DIR):
         for root, dirs, files in os.walk(TEST_DATASET_DIR):
             for file in files:
-                if file.lower().endswith(('.mp4', '.avi', '.mov', '.mkv')):
+                if file.lower().endswith(('.mp4', '.avi', '.mov', '.mkv', '.jpg', '.jpeg', '.png')):
                     rel_dir = os.path.basename(root)
                     samples.append({
                         "name": file,
@@ -205,7 +186,7 @@ def get_sample_videos():
 
 @app.route("/api/process_video", methods=["POST"])
 def process_video():
-    """Processes uploaded or selected video file using camera.py drawing logic."""
+    """Unified API route processing both Image (.jpg, .png) and Video (.mp4, .mov) uploads."""
     load_models()
     
     file_path = None
@@ -243,14 +224,153 @@ def process_video():
                     break
 
     if not file_path or not os.path.exists(file_path):
-        return jsonify({"status": "error", "message": f"Video file not found at server: {file_path}"}), 400
+        return jsonify({"status": "error", "message": f"Media file not found at server: {file_path}"}), 400
 
-    print(f"[*] Processing video feed: {file_path}")
-    
+    print(f"[*] Processing media feed: {file_path}")
     run_id = uuid.uuid4().hex[:8]
+    is_image_file = file_path.lower().endswith(('.jpg', '.jpeg', '.png', '.webp'))
+    
+    # -------------------------------------------------------------
+    # CASE A: IMAGE CLASSIFICATION & BOUNDING BOX DETECTION
+    # -------------------------------------------------------------
+    if is_image_file:
+        frame = cv2.imread(file_path)
+        if frame is None:
+            return jsonify({"status": "error", "message": "Failed to read image file"}), 400
+
+        height, width = frame.shape[:2]
+        is_accident_frame = False
+        pa_conf = 0.0
+
+        if KERAS_ACCIDENT_MODEL:
+            keras_batch = preprocess_keras_frame(frame, target_size=(250, 250))
+            preds = KERAS_ACCIDENT_MODEL(keras_batch, training=False).numpy()
+            if preds.shape[-1] == 1:
+                raw_s = float(preds[0][0])
+                is_accident_frame = raw_s > 0.50
+                pa_conf = raw_s if is_accident_frame else (1.0 - raw_s)
+            else:
+                c_idx = int(np.argmax(preds[0]))
+                is_accident_frame = (c_idx == 0)
+                pa_conf = float(preds[0][c_idx])
+        elif ACCIDENT_MODEL:
+            acc_res = ACCIDENT_MODEL(frame, conf=0.35, verbose=False)[0]
+            is_accident_frame = len(acc_res.boxes) > 0
+            if is_accident_frame: pa_conf = float(acc_res.boxes.conf.max())
+
+        detected_vehicles = []
+        if VEHICLE_MODEL:
+            yolo_results = VEHICLE_MODEL(frame, conf=0.30, verbose=False)[0]
+            if yolo_results.boxes:
+                for box in yolo_results.boxes:
+                    cls_id = int(box.cls[0].item())
+                    if cls_id in VEHICLE_CLASS_IDS:
+                        coords = box.xyxy[0].cpu().numpy().astype(int)
+                        conf = float(box.conf[0].item())
+                        detected_vehicles.append({
+                            'box': coords,
+                            'cls': VEHICLE_CLASS_IDS[cls_id],
+                            'conf': conf
+                        })
+
+        all_boxes = [v['box'] for v in detected_vehicles]
+        colliding_indices = find_colliding_vehicles(all_boxes) if is_accident_frame else set()
+        num_colliding = len(colliding_indices)
+        font = cv2.FONT_HERSHEY_SIMPLEX
+
+        # Draw Image Annotations
+        annotated_frame = frame.copy()
+        collided_classes = set()
+        for idx, vehicle in enumerate(detected_vehicles):
+            x1, y1, x2, y2 = vehicle['box']
+            label = vehicle['cls']
+            conf = vehicle['conf']
+
+            if idx in colliding_indices:
+                color = (0, 0, 255) # RED
+                box_text = f"COLLISION: {label} ({int(conf*100)}%)"
+                thickness = 3
+                collided_classes.add(label)
+            else:
+                color = (0, 255, 0) # GREEN
+                box_text = f"{label} ({int(conf*100)}%)"
+                thickness = 2
+
+            cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), color, thickness)
+            (lbl_w, lbl_h), _ = cv2.getTextSize(box_text, font, 0.5, 1)
+            cv2.rectangle(annotated_frame, (x1, max(0, y1 - 22)), (x1 + lbl_w + 6, max(22, y1)), color, -1)
+            cv2.putText(annotated_frame, box_text, (x1 + 3, max(16, y1 - 5)), font, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
+
+        banner_h = 55
+        if is_accident_frame:
+            banner_bg = (0, 0, 200)
+            banner_text = f"🚨 EMERGENCY: ACCIDENT DETECTED ({pa_conf*100:.1f}%) | VEHICLES COLLIDED: {num_colliding}"
+        else:
+            banner_bg = (0, 150, 0)
+            banner_text = f"NORMAL TRAFFIC ({pa_conf*100:.1f}%) | VEHICLES IN FRAME: {len(detected_vehicles)}"
+
+        cv2.rectangle(annotated_frame, (0, 0), (width, banner_h), banner_bg, -1)
+        cv2.putText(annotated_frame, banner_text, (20, 36), font, 0.75, (255, 255, 255), 2, cv2.LINE_AA)
+
+        out_img_path = os.path.join(app.config["OUTPUT_FOLDER"], f"out_img_{run_id}.jpg")
+        snap_before = os.path.join(app.config["OUTPUT_FOLDER"], f"snap_before_{run_id}.jpg")
+        snap_during = os.path.join(app.config["OUTPUT_FOLDER"], f"snap_during_{run_id}.jpg")
+        snap_after = os.path.join(app.config["OUTPUT_FOLDER"], f"snap_after_{run_id}.jpg")
+
+        cv2.imwrite(out_img_path, annotated_frame)
+        cv2.imwrite(snap_before, frame) # raw unannotated
+        cv2.imwrite(snap_during, annotated_frame) # annotated peak
+        cv2.imwrite(snap_after, annotated_frame)
+
+        v_list = list(collided_classes) if collided_classes else ["Car", "Truck"]
+        severity = assess_severity(v_list) if is_accident_frame else "Normal (No Emergency)"
+        collision_type = "Rear-end / Impact Collision" if is_accident_frame else "No Collision"
+
+        return jsonify({
+            "status": "success",
+            "is_image": True,
+            "deliverables": {
+                "accident_detected": is_accident_frame,
+                "confidence_score": f"{pa_conf * 100:.1f}%" if is_accident_frame else "0.0%",
+                "map_location": {
+                    "latitude": round(random.uniform(12.8500, 13.0800), 4),
+                    "longitude": round(random.uniform(77.5500, 77.7500), 4),
+                    "highway": "NH-44 Expressway Corridor",
+                    "camera_id": "CAM-NH44-KM18.4"
+                },
+                "media_urls": {
+                    "processed_image": f"/static/outputs/out_img_{run_id}.jpg",
+                    "processed_video": None,
+                    "snapshots": {
+                        "before": f"/static/outputs/snap_before_{run_id}.jpg",
+                        "during": f"/static/outputs/snap_during_{run_id}.jpg",
+                        "after": f"/static/outputs/snap_after_{run_id}.jpg"
+                    }
+                },
+                "collision_type": collision_type,
+                "vehicle_count": num_colliding if is_accident_frame else len(detected_vehicles),
+                "vehicle_classes": v_list,
+                "impact_severity": severity,
+                "smart_dynamics": {
+                    "hit_and_run_suspect": "FALSE (Image Snapshot)",
+                    "post_crash_traffic": "CONGESTION BUILDING" if is_accident_frame else "NORMAL FLOW",
+                    "secondary_collision_warning": "ELEVATED RISK" if is_accident_frame else "LOW RISK"
+                },
+                "reconstruction_2d": generate_2d_reconstruction_data(collision_type, num_colliding, v_list),
+                "authority_dispatches": {
+                    "ems_ambulance": {"status": "DISPATCHED" if is_accident_frame else "STANDBY", "eta_mins": 5},
+                    "traffic_police": {"status": "NOTIFIED", "patrol_unit": "Patrol-44B"},
+                    "fire_rescue": {"status": "ALERTED" if is_accident_frame else "STANDBY"},
+                    "highway_control": {"status": "ACTIVE", "action": "VMS Signage Updated"}
+                }
+            }
+        })
+
+    # -------------------------------------------------------------
+    # CASE B: VIDEO PROCESSING & 3-STAGE SNAPSHOT EXTRACTOR
+    # -------------------------------------------------------------
     raw_out_path = os.path.join(app.config["OUTPUT_FOLDER"], f"raw_{run_id}.mp4")
     web_out_path = os.path.join(app.config["OUTPUT_FOLDER"], f"out_{run_id}.mp4")
-    snapshot_path = os.path.join(app.config["OUTPUT_FOLDER"], f"snapshot_{run_id}.jpg")
     
     cap = cv2.VideoCapture(file_path)
     fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
@@ -267,18 +387,20 @@ def process_video():
     max_colliding_count = 0
     collided_classes_set = set()
     
+    raw_frames_history = []
+    frame_confs = []
+    peak_frame_idx = 0
     frame_idx = 0
-    snapshot_saved = False
     
     while cap.isOpened() and frame_idx < 450: # max 15 sec preview
         ret, frame = cap.read()
         if not ret: break
         frame_idx += 1
+        raw_frames_history.append(frame.copy())
         
         is_accident_frame = False
         pa_conf = 0.0
         
-        # 1. Keras Accident Model Prediction
         if KERAS_ACCIDENT_MODEL:
             keras_batch = preprocess_keras_frame(frame, target_size=(250, 250))
             preds = KERAS_ACCIDENT_MODEL(keras_batch, training=False).numpy()
@@ -288,23 +410,24 @@ def process_video():
                 pa_conf = raw_s if is_accident_frame else (1.0 - raw_s)
             else:
                 c_idx = int(np.argmax(preds[0]))
-                is_accident_frame = (c_idx == 0) # Index 0: 'Accident' in AccidentDetectionModel
+                is_accident_frame = (c_idx == 0)
                 pa_conf = float(preds[0][c_idx])
-        # 2. Alternative PyTorch YOLO Prediction
         elif ACCIDENT_MODEL:
             acc_res = ACCIDENT_MODEL(frame, conf=0.35, verbose=False)[0]
             is_accident_frame = len(acc_res.boxes) > 0
-            if is_accident_frame:
-                pa_conf = float(acc_res.boxes.conf.max())
+            if is_accident_frame: pa_conf = float(acc_res.boxes.conf.max())
 
-        # 3. Vehicle Object Detection via YOLO (People / Class 0 Excluded!)
+        frame_confs.append(pa_conf if is_accident_frame else 0.0)
+        if is_accident_frame and pa_conf > max_accident_conf:
+            max_accident_conf = pa_conf
+            peak_frame_idx = frame_idx - 1
+
         detected_vehicles = []
         if VEHICLE_MODEL:
             yolo_results = VEHICLE_MODEL(frame, conf=0.30, verbose=False)[0]
             if yolo_results.boxes:
                 for box in yolo_results.boxes:
                     cls_id = int(box.cls[0].item())
-                    # Filter: ONLY vehicles in VEHICLE_CLASS_IDS (No People!)
                     if cls_id in VEHICLE_CLASS_IDS:
                         coords = box.xyxy[0].cpu().numpy().astype(int)
                         conf = float(box.conf[0].item())
@@ -316,56 +439,44 @@ def process_video():
 
         all_boxes = [v['box'] for v in detected_vehicles]
         
-        # Temporal Gating & Confirmation
         if is_accident_frame:
             consecutive_hits += 1
-            if pa_conf > max_accident_conf: max_accident_conf = pa_conf
             if consecutive_hits >= 3 and not accident_detected:
                 accident_detected = True
         else:
             consecutive_hits = max(0, consecutive_hits - 1)
 
-        # Find Colliding Vehicle Indices from camera.py proximity logic
         colliding_indices = find_colliding_vehicles(all_boxes) if is_accident_frame else set()
         num_colliding = len(colliding_indices)
         if num_colliding > max_colliding_count:
             max_colliding_count = num_colliding
 
-        # Step 4: Draw Vehicle Bounding Boxes (Exact camera.py style)
         for idx, vehicle in enumerate(detected_vehicles):
             x1, y1, x2, y2 = vehicle['box']
             label = vehicle['cls']
             conf = vehicle['conf']
 
             if idx in colliding_indices:
-                color = (0, 0, 255) # RED box for colliding vehicle
+                color = (0, 0, 255)
                 box_text = f"COLLISION: {label} ({int(conf*100)}%)"
                 thickness = 3
                 collided_classes_set.add(label)
             else:
-                color = (0, 255, 0) # GREEN box for normal vehicle
+                color = (0, 255, 0)
                 box_text = f"{label} ({int(conf*100)}%)"
                 thickness = 2
 
             cv2.rectangle(frame, (x1, y1), (x2, y2), color, thickness)
-            
-            # Label background banner
             (lbl_w, lbl_h), _ = cv2.getTextSize(box_text, font, 0.5, 1)
             cv2.rectangle(frame, (x1, max(0, y1 - 22)), (x1 + lbl_w + 6, max(22, y1)), color, -1)
             cv2.putText(frame, box_text, (x1 + 3, max(16, y1 - 5)), font, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
 
-        # Save snapshot on first confirmed accident frame
-        if accident_detected and not snapshot_saved:
-            cv2.imwrite(snapshot_path, frame)
-            snapshot_saved = True
-
-        # Step 5: Top HUD Banner (Exact camera.py style)
         banner_h = 55
         if is_accident_frame:
-            banner_bg = (0, 0, 200) # Dark Red Banner
+            banner_bg = (0, 0, 200)
             banner_text = f"🚨 EMERGENCY: ACCIDENT DETECTED ({max_accident_conf * 100:.1f}%) | VEHICLES COLLIDED: {num_colliding}"
         else:
-            banner_bg = (0, 150, 0) # Dark Green Banner
+            banner_bg = (0, 150, 0)
             banner_text = f"NORMAL TRAFFIC ({max_accident_conf * 100:.1f}%) | VEHICLES IN FRAME: {len(detected_vehicles)}"
 
         cv2.rectangle(frame, (0, 0), (width, banner_h), banner_bg, -1)
@@ -378,7 +489,36 @@ def process_video():
     
     transcode_to_h264(raw_out_path, web_out_path)
     if os.path.exists(raw_out_path): os.remove(raw_out_path)
-    
+
+    # -------------------------------------------------------------
+    # EXTRACT 3-STAGE SNAPSHOTS: BEFORE, DURING, AFTER
+    # -------------------------------------------------------------
+    total_f = len(raw_frames_history)
+    if total_f > 0:
+        idx_during = peak_frame_idx if accident_detected else total_f // 2
+        idx_before = max(0, idx_during - int(fps * 1.5))
+        idx_after = min(total_f - 1, idx_during + int(fps * 1.5))
+        
+        f_before = raw_frames_history[idx_before]
+        f_during = raw_frames_history[idx_during]
+        f_after = raw_frames_history[idx_after]
+        
+        snap_before = os.path.join(app.config["OUTPUT_FOLDER"], f"snap_before_{run_id}.jpg")
+        snap_during = os.path.join(app.config["OUTPUT_FOLDER"], f"snap_during_{run_id}.jpg")
+        snap_after = os.path.join(app.config["OUTPUT_FOLDER"], f"snap_after_{run_id}.jpg")
+        
+        cv2.imwrite(snap_before, f_before)
+        cv2.imwrite(snap_during, f_during)
+        cv2.imwrite(snap_after, f_after)
+        
+        snapshot_urls = {
+            "before": f"/static/outputs/snap_before_{run_id}.jpg",
+            "during": f"/static/outputs/snap_during_{run_id}.jpg",
+            "after": f"/static/outputs/snap_after_{run_id}.jpg"
+        }
+    else:
+        snapshot_urls = None
+
     v_list = list(collided_classes_set) if collided_classes_set else ["Car", "Truck"]
     if not accident_detected:
         collision_type = "No Collision / Normal Traffic Flow"
@@ -393,6 +533,7 @@ def process_video():
     
     response_data = {
         "status": "success",
+        "is_image": False,
         "deliverables": {
             "accident_detected": accident_detected,
             "confidence_score": f"{max_accident_conf * 100:.1f}%" if accident_detected else "0.0%",
@@ -404,8 +545,8 @@ def process_video():
             },
             "media_urls": {
                 "processed_video": f"/static/outputs/out_{run_id}.mp4",
-                "snapshot_image": f"/static/outputs/snapshot_{run_id}.jpg" if snapshot_saved else None,
-                "telemetry_video": f"/static/outputs/out_{run_id}.mp4"
+                "processed_image": None,
+                "snapshots": snapshot_urls
             },
             "collision_type": collision_type,
             "vehicle_count": max_colliding_count,

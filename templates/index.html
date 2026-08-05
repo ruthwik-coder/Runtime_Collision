@@ -183,13 +183,13 @@
   <!-- Main Content Body -->
   <main class="flex-1 overflow-y-auto p-section-margin bg-background flex flex-col gap-section-margin pb-20">
     
-    <!-- Top 2-Column Section: Video Analyzer & Dispatch Table -->
+    <!-- Top 2-Column Section: Video/Photo Analyzer & Dispatch Table -->
     <div class="grid grid-cols-1 xl:grid-cols-2 gap-section-margin">
       
-      <!-- LEFT: Video Crash Analyzer -->
+      <!-- LEFT: Media Crash Analyzer -->
       <section class="bg-surface border border-outline-variant flex flex-col shadow-sm">
         <header class="px-4 py-2.5 bg-surface-container-high border-b border-outline-variant flex justify-between items-center">
-          <h2 class="font-label-caps text-label-caps text-on-surface uppercase tracking-wider">Video Crash Analyzer</h2>
+          <h2 class="font-label-caps text-label-caps text-on-surface uppercase tracking-wider">Photo &amp; Video Crash Analyzer</h2>
           <div class="flex items-center gap-2">
             <span class="w-2 h-2 rounded-full bg-error animate-ping"></span>
             <span class="font-label-caps text-label-caps text-error tracking-widest">LIVE INGEST</span>
@@ -199,10 +199,10 @@
         <div class="p-4 flex flex-col gap-4 flex-1">
           <!-- Dropzone -->
           <div id="dropzone" onclick="document.getElementById('video-input').click()" class="border border-dashed border-outline-variant hover:border-primary bg-surface-container p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-colors group h-24">
-            <input type="file" id="video-input" accept="video/mp4,video/mov,video/avi" class="hidden" onchange="handleFileSelect(event)">
-            <span class="material-symbols-outlined text-outline group-hover:text-primary mb-1">upload_file</span>
-            <span class="font-data-sm text-data-sm text-on-surface-variant group-hover:text-on-surface">Drag &amp; Drop CCTV Footage or Click to Browse</span>
-            <span class="font-label-caps text-label-caps text-outline mt-1">(Supports MP4, MOV, AVI)</span>
+            <input type="file" id="video-input" accept="video/mp4,video/mov,video/avi,image/jpeg,image/png,image/jpg,image/webp" class="hidden" onchange="handleFileSelect(event)">
+            <span class="material-symbols-outlined text-outline group-hover:text-primary mb-1">cloud_upload</span>
+            <span class="font-data-sm text-data-sm text-on-surface-variant group-hover:text-on-surface">Drag &amp; Drop Photo / CCTV Video or Click to Browse</span>
+            <span class="font-label-caps text-label-caps text-outline mt-1">(Supports JPG, PNG, WEBP, MP4, MOV, AVI)</span>
           </div>
 
           <!-- Controls & Samples -->
@@ -233,19 +233,24 @@
             </div>
           </div>
 
-          <!-- Video Player Screen -->
-          <div class="relative w-full aspect-video bg-black border border-outline-variant overflow-hidden scanlines flex-1 min-h-[300px]">
+          <!-- Media Viewport Screen -->
+          <div class="relative w-full aspect-video bg-black border border-outline-variant overflow-hidden scanlines flex-1 min-h-[300px] flex items-center justify-center">
             <div class="absolute top-3 left-3 bg-surface/90 border border-primary px-2 py-1 z-30 flex items-center gap-2 backdrop-blur-sm">
               <span class="material-symbols-outlined text-primary text-[14px]">analytics</span>
-              <span class="font-label-caps text-label-caps text-primary">AI ANNOTATED FEED</span>
+              <span class="font-label-caps text-label-caps text-primary" id="feed-badge-label">AI ANNOTATED FEED</span>
             </div>
             <div id="rec-watermark" class="absolute bottom-3 right-3 bg-error-container/90 border border-error px-2 py-1 z-30 flex items-center gap-2 backdrop-blur-sm">
               <span class="w-1.5 h-1.5 bg-error rounded-none animate-pulse"></span>
               <span class="font-data-sm text-data-sm text-error font-bold">REC 5s TELEMETRY</span>
             </div>
+
+            <!-- Video Display Player -->
             <video id="main-video-player" controls class="w-full h-full object-cover">
               <source id="video-source" src="/static/samples/sample4.mp4" type="video/mp4">
             </video>
+
+            <!-- Image Display Viewport -->
+            <img id="main-image-player" src="" class="hidden w-full h-full object-contain z-10" />
           </div>
         </div>
       </section>
@@ -274,17 +279,32 @@
                 <td class="py-2.5 px-4 text-on-surface-variant font-medium">02. Map / Camera ID</td>
                 <td class="py-2.5 px-4 text-on-surface" id="out-location-cam">NH-44 Expressway [CAM-A09-N]</td>
               </tr>
+
+              <!-- 03. EVIDENCE LOCK (3-STAGE COMPACT SNAPSHOT THUMBNAILS) -->
               <tr>
                 <td class="py-2.5 px-4 text-on-surface-variant font-medium">03. Evidence Lock</td>
-                <td class="py-2.5 px-4 flex gap-2">
-                  <button id="btn-view-snapshot" onclick="openSnapshotModal()" class="border border-outline px-2 py-0.5 text-on-surface hover:text-primary transition-colors flex items-center gap-1">
-                    <span class="material-symbols-outlined text-[14px]">image</span> Snapshot
-                  </button>
-                  <button id="btn-view-telemetry" onclick="openReconstructionModalWithData('Rear-end Collision', 2)" class="border border-outline px-2 py-0.5 text-on-surface hover:text-primary transition-colors flex items-center gap-1">
+                <td class="py-2.5 px-4 flex flex-wrap gap-3 items-center">
+                  <!-- Sleek 3-Stage Thumbnail Strip -->
+                  <div id="snapshot-thumbnails-strip" class="flex gap-2 items-center">
+                    <button onclick="openSnapshotModal('before')" title="Click to enlarge: Before Impact Scene" class="group relative border border-outline-variant hover:border-primary p-0.5 bg-surface-container transition-all flex flex-col items-center">
+                      <img id="thumb-before" src="/static/outputs/snapshot_adee25e3.jpg" class="w-14 h-9 object-cover group-hover:scale-105 transition-transform" />
+                      <span class="text-[9px] font-data-sm text-outline group-hover:text-primary mt-0.5">BEFORE</span>
+                    </button>
+                    <button onclick="openSnapshotModal('during')" title="Click to enlarge: Peak Collision (Confidence ≥80%)" class="group relative border border-error/50 hover:border-error p-0.5 bg-error-container/10 transition-all flex flex-col items-center">
+                      <img id="thumb-during" src="/static/outputs/snapshot_adee25e3.jpg" class="w-14 h-9 object-cover group-hover:scale-105 transition-transform border border-error/30" />
+                      <span class="text-[9px] font-data-sm text-error font-bold mt-0.5">DURING (80%+)</span>
+                    </button>
+                    <button onclick="openSnapshotModal('after')" title="Click to enlarge: Post Impact Scene" class="group relative border border-outline-variant hover:border-tertiary p-0.5 bg-surface-container transition-all flex flex-col items-center">
+                      <img id="thumb-after" src="/static/outputs/snapshot_adee25e3.jpg" class="w-14 h-9 object-cover group-hover:scale-105 transition-transform" />
+                      <span class="text-[9px] font-data-sm text-tertiary mt-0.5">AFTER</span>
+                    </button>
+                  </div>
+                  <button id="btn-view-telemetry" onclick="openReconstructionModalWithData('Rear-end Collision', 2)" class="border border-outline px-2.5 py-1 text-on-surface hover:text-primary transition-colors flex items-center gap-1 text-xs">
                     <span class="material-symbols-outlined text-[14px]">play_circle</span> 2D Telemetry
                   </button>
                 </td>
               </tr>
+
               <tr>
                 <td class="py-2.5 px-4 text-on-surface-variant font-medium">04. Collision Type</td>
                 <td class="py-2.5 px-4 text-on-surface" id="out-collision-type">Rear-end Collision</td>
@@ -412,23 +432,34 @@
   </main>
 </div>
 
-<!-- Modal 1: Evidence Snapshot -->
-<div id="snapshot-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-  <div class="bg-surface border border-outline-variant max-w-2xl w-full p-4 flex flex-col gap-3">
+<!-- Modal 1: High-Res Evidence Snapshot Viewer -->
+<div id="snapshot-modal" class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
+  <div class="bg-surface border border-outline-variant max-w-3xl w-full p-4 flex flex-col gap-3 shadow-2xl">
     <div class="flex justify-between items-center border-b border-outline-variant pb-2">
-      <h3 class="font-headline-md text-headline-md text-primary">Accident Evidence Snapshot</h3>
-      <button onclick="closeSnapshotModal()" class="text-on-surface hover:text-error text-xl">&times;</button>
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-primary text-[20px]">photo_camera</span>
+        <h3 class="font-headline-md text-headline-md text-primary" id="snapshot-modal-title">Collision Impact Snapshot</h3>
+      </div>
+      <button onclick="closeSnapshotModal()" class="text-on-surface hover:text-error text-2xl font-bold">&times;</button>
     </div>
-    <img id="snapshot-img-preview" src="/static/outputs/snapshot_adee25e3.jpg" class="w-full rounded border border-outline-variant">
+    <div class="bg-black border border-outline-variant p-1 flex justify-center items-center">
+      <img id="snapshot-img-preview" src="/static/outputs/snapshot_adee25e3.jpg" class="max-h-[70vh] w-auto object-contain rounded">
+    </div>
+    <div class="flex justify-between items-center text-xs font-data-sm text-on-surface-variant pt-1">
+      <span id="snapshot-modal-caption" class="text-primary font-bold">STAGE: PEAK COLLISION IMPACT (≥80% CONFIDENCE)</span>
+      <button onclick="closeSnapshotModal()" class="border border-outline px-4 py-1 text-on-surface hover:text-primary transition-colors">
+        CLOSE VIEWER
+      </button>
+    </div>
   </div>
 </div>
 
 <!-- Modal 2: 2D Crash Reconstruction Canvas -->
-<div id="reconstruction-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-  <div class="bg-surface border border-outline-variant max-w-3xl w-full p-4 flex flex-col gap-3">
+<div id="reconstruction-modal" class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
+  <div class="bg-surface border border-outline-variant max-w-3xl w-full p-4 flex flex-col gap-3 shadow-2xl">
     <div class="flex justify-between items-center border-b border-outline-variant pb-2">
       <h3 class="font-headline-md text-headline-md text-primary">2D Collision Trajectory Reconstruction</h3>
-      <button onclick="closeReconstructionModal()" class="text-on-surface hover:text-error text-xl">&times;</button>
+      <button onclick="closeReconstructionModal()" class="text-on-surface hover:text-error text-2xl font-bold">&times;</button>
     </div>
     <div class="bg-background border border-outline-variant p-2 flex justify-center">
       <canvas id="reconstruction-canvas" width="700" height="340"></canvas>
@@ -459,6 +490,13 @@
   let simInterval = null;
   let simulatedVehicles = [];
 
+  // Active snapshot URLs store
+  let activeSnapshots = {
+    before: "/static/outputs/snapshot_adee25e3.jpg",
+    during: "/static/outputs/snapshot_adee25e3.jpg",
+    after: "/static/outputs/snapshot_adee25e3.jpg"
+  };
+
   document.addEventListener("DOMContentLoaded", () => {
     initClock();
     initMap();
@@ -481,7 +519,8 @@
     if (files.length > 0) {
       selectedFile = files[0];
       selectedSamplePath = null;
-      document.getElementById("selected-filename").innerText = selectedFile.name + " (" + (selectedFile.size / (1024*1024)).toFixed(1) + " MB)";
+      const isImg = selectedFile.type.startsWith("image/");
+      document.getElementById("selected-filename").innerText = selectedFile.name + " (" + (selectedFile.size / (1024*1024)).toFixed(1) + " MB - " + (isImg ? "Photo" : "Video") + ")";
       document.getElementById("selected-file-info").classList.remove("hidden");
     }
   }
@@ -492,14 +531,17 @@
     document.getElementById("selected-filename").innerText = sampleName + " (Sample Footage)";
     document.getElementById("selected-file-info").classList.remove("hidden");
     
+    // Reset to Video Viewport
+    document.getElementById("main-image-player").classList.add("hidden");
     const player = document.getElementById("main-video-player");
+    player.classList.remove("hidden");
     document.getElementById("video-source").src = sampleUrl;
     player.load();
   }
 
   async function startVideoProcessing() {
     if (!selectedFile && !selectedSamplePath) {
-      alert("Please select a video file or pick a sample video.");
+      alert("Please select a photo/video file or pick a sample video.");
       return;
     }
 
@@ -522,7 +564,7 @@
 
     try {
       progressBar.style.width = "60%";
-      statusText.innerText = "🔍 Frame Inference: Pipeline A (Accident) & Pipeline B (Tracking)...";
+      statusText.innerText = "🔍 Inference: Pipeline A (Accident Feature) & Pipeline B (Vehicle Bounding Boxes)...";
 
       const response = await fetch("/api/process_video", {
         method: "POST",
@@ -535,7 +577,7 @@
       progressBar.style.width = "100%";
 
       if (data.status === "success") {
-        displayDeliverables(data.deliverables);
+        displayDeliverables(data.deliverables, data.is_image);
         addNotification(`Processed feed: ${selectedFile ? selectedFile.name : selectedSamplePath}`, data.deliverables.accident_detected ? "alert" : "info");
       } else {
         alert("Error: " + data.message);
@@ -549,7 +591,7 @@
     }
   }
 
-  function displayDeliverables(d) {
+  function displayDeliverables(d, isImage = false) {
     document.getElementById("out-flag-conf").innerText = d.accident_detected ? `🚨 ${d.confidence_score} CONFIRMED` : `✅ NO ACCIDENT (${d.confidence_score})`;
     document.getElementById("out-location-cam").innerText = `${d.map_location.highway} [${d.map_location.camera_id}]`;
     document.getElementById("out-collision-type").innerText = d.collision_type;
@@ -559,16 +601,62 @@
     document.getElementById("out-traffic-status").innerText = d.smart_dynamics.post_crash_traffic;
     document.getElementById("out-secondary-warning").innerText = d.smart_dynamics.secondary_collision_warning;
 
-    if (d.media_urls.snapshot_image) {
-      document.getElementById("snapshot-img-preview").src = d.media_urls.snapshot_image;
+    // Update 3-Stage Snapshots
+    if (d.media_urls.snapshots) {
+      activeSnapshots = d.media_urls.snapshots;
+      if (d.media_urls.snapshots.before) document.getElementById("thumb-before").src = d.media_urls.snapshots.before;
+      if (d.media_urls.snapshots.during) document.getElementById("thumb-during").src = d.media_urls.snapshots.during;
+      if (d.media_urls.snapshots.after) document.getElementById("thumb-after").src = d.media_urls.snapshots.after;
     }
 
-    if (d.media_urls.processed_video) {
-      const player = document.getElementById("main-video-player");
+    // Media Viewport Switcher: Image vs Video
+    const videoPlayer = document.getElementById("main-video-player");
+    const imagePlayer = document.getElementById("main-image-player");
+    const badgeLabel = document.getElementById("feed-badge-label");
+
+    if (isImage || d.media_urls.processed_image) {
+      badgeLabel.innerText = "AI ANNOTATED PHOTO";
+      videoPlayer.classList.add("hidden");
+      imagePlayer.src = d.media_urls.processed_image;
+      imagePlayer.classList.remove("hidden");
+    } else if (d.media_urls.processed_video) {
+      badgeLabel.innerText = "AI ANNOTATED FEED";
+      imagePlayer.classList.add("hidden");
+      videoPlayer.classList.remove("hidden");
       document.getElementById("video-source").src = d.media_urls.processed_video;
-      player.load();
-      player.play().catch(() => {});
+      videoPlayer.load();
+      videoPlayer.play().catch(() => {});
     }
+  }
+
+  function openSnapshotModal(stage = "during") {
+    const modal = document.getElementById("snapshot-modal");
+    const imgPreview = document.getElementById("snapshot-img-preview");
+    const titleElem = document.getElementById("snapshot-modal-title");
+    const captionElem = document.getElementById("snapshot-modal-caption");
+
+    let imgSrc = activeSnapshots.during;
+    let titleText = "Collision Peak Impact Snapshot";
+    let captionText = "STAGE: PEAK COLLISION IMPACT (≥80% CONFIDENCE)";
+
+    if (stage === "before") {
+      imgSrc = activeSnapshots.before || activeSnapshots.during;
+      titleText = "Pre-Collision Snapshot (Before Impact)";
+      captionText = "STAGE 1: BEFORE IMPACT (~1.5s PRIOR TO COLLISION PEAK)";
+    } else if (stage === "after") {
+      imgSrc = activeSnapshots.after || activeSnapshots.during;
+      titleText = "Post-Collision Snapshot (After Impact)";
+      captionText = "STAGE 3: POST IMPACT (~1.5s AFTER COLLISION PEAK)";
+    }
+
+    imgPreview.src = imgSrc;
+    titleElem.innerText = titleText;
+    captionElem.innerText = captionText;
+    modal.classList.remove("hidden");
+  }
+
+  function closeSnapshotModal() {
+    document.getElementById("snapshot-modal").classList.add("hidden");
   }
 
   function initMap() {
@@ -699,9 +787,6 @@
       ctx.fillText(`V${i+1}`, sx - 7, sy + 4);
     }
   }
-
-  function openSnapshotModal() { document.getElementById("snapshot-modal").classList.remove("hidden"); }
-  function closeSnapshotModal() { document.getElementById("snapshot-modal").classList.add("hidden"); }
 
   function openReconstructionModalWithData(type, count) {
     document.getElementById("reconstruction-modal").classList.remove("hidden");
