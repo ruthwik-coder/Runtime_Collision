@@ -1,3 +1,13 @@
+---
+title: Vision Highway Accident Detection Dashboard
+emoji: 🚨
+colorFrom: red
+colorTo: blue
+sdk: docker
+app_port: 5000
+pinned: false
+---
+
 # 🚨 Vision-Based Automatic Highway Accident Detection & Emergency Command System
 
 > **IEEE Computer Vision Hackathon 2026** | **Runtime Collision Command Center**
